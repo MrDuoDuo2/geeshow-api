@@ -1,4 +1,4 @@
-package com.example.geeweshowapi;
+package com.example.geeweshowapi.model;
 
 public class User {
     String user_id;

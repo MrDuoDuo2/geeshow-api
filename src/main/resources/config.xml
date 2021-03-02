@@ -18,9 +18,9 @@
             </dataSource>
         </environment>
     </environments>
+
     <mappers>
-        <!--        <package name="com.github.mrduoduo2.dao"/>-->
-        <!--        <mapper resource="com/mrduoduo2/dao/VehicleMapper.xml"/>-->
         <mapper resource="mapper/DemoMapper.xml"/>
     </mappers>
+
 </configuration>

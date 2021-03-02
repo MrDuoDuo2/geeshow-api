@@ -2,9 +2,9 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.example.geeweshowapi.Enity">
+<mapper namespace="com.example.geeweshowapi.dao.Enity">
     <!--    select    -->
-    <select id="findByUserId" resultType="com.example.geeweshowapi.User">
+    <select id="findByUserId" resultType="com.example.geeweshowapi.model.User">
         select user_id,git_id from user where user_id = #{user_id};
     </select>
 
@@ -12,5 +12,8 @@
         insert into user (user_id,git_id) values(#{user_id},#{git_id});
     </insert>
 
+    <update id="updateUserInfo">
+        UPDATE user SET git_id=#{git_id} where user_id = #{user_id};
+    </update>
 
 </mapper>

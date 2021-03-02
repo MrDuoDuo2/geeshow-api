@@ -1,4 +1,4 @@
-package com.example.geeweshowapi;
+package com.example.geeweshowapi.util;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;

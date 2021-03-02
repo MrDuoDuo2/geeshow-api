@@ -1,6 +1,6 @@
-package com.example.geeweshowapi;
+package com.example.geeweshowapi.DTO;
 
-public class GithubUser {
+public class GithubUserDTO {
     String login;
     String id;
     String node_id;
