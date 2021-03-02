@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.geeweshowapi.Enity">
+    <!--    select    -->
+    <select id="findByUserId" resultType="com.example.geeweshowapi.User">
+        select user_id,git_id from user where user_id = #{user_id};
+    </select>
+
+    <insert id="insertUserInfo">
+        insert into user (user_id,git_id) values(#{user_id},#{git_id});
+    </insert>
+
+
+</mapper>
