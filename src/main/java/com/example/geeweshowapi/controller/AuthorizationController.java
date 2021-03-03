@@ -12,12 +12,9 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
 import redis.clients.jedis.Jedis;
 
 import javax.servlet.http.Cookie;
@@ -49,7 +46,7 @@ public class AuthorizationController {
     @Value("${github.redirect_uri}")
     private String redirect_uri;
 
-    @Value(("${git.path}"))
+    @Value("${git.path}")
     private String git_path;
 
     @GetMapping(value = "/")
@@ -71,7 +68,13 @@ public class AuthorizationController {
             }
         }
 
-        if (user_id == null || token == null) {
+        if (user_id == null && token == null) {
+            Cookie userIdCookie = new Cookie("UserId", "");
+            Cookie tokenCookie = new Cookie("Token", "");
+
+            response.addCookie(userIdCookie);
+            response.addCookie(tokenCookie);
+        }else if (user_id.equals("") && token.equals("")){
             Cookie userIdCookie = new Cookie("UserId", "");
             Cookie tokenCookie = new Cookie("Token", "");
 
@@ -100,9 +103,11 @@ public class AuthorizationController {
             params.put("UserId", user_id);
 
             StringBuilder stringToSign = signatrueProvider.createSignString(params);
+            assert token != null;
             String signature = signatrueProvider.createSignature(token, stringToSign);
 
             params.put("Signature", signature);
+
 
             System.out.println(signature);
             System.out.println(stringToSign.toString());
@@ -304,8 +309,6 @@ public class AuthorizationController {
             return "登陆失败";
         }
     }
-
-
     private String createGitRepository(String user_id) throws IOException {
 
         String pathName = String.format("%s/%s.git/.git", git_path, user_id);
@@ -327,5 +330,7 @@ public class AuthorizationController {
         }
 
     }
+
+
 
 }

@@ -85,6 +85,16 @@
 			<artifactId>jakarta.xml.bind-api</artifactId>
 		</dependency>
 
+
+
+
+
+			<dependency>
+				<groupId>org.asciidoctor</groupId>
+				<artifactId>asciidoctorj</artifactId>
+				<version>2.4.3</version>
+			</dependency>
+
 	</dependencies>
 
 	<build>
