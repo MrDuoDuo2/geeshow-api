@@ -8,6 +8,8 @@ import com.example.geeweshowapi.Provider.SignatrueProvider;
 import com.example.geeweshowapi.model.User;
 import com.example.geeweshowapi.util.JsonUtils;
 import com.example.geeweshowapi.util.ThclUrlUtil;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -227,7 +229,7 @@ public class AuthorizationController {
         mysqlController.init();
 
         //查找mysql用户信息
-        List<User> user = mysqlController.findByUserId(user_id);
+        User user = mysqlController.findByUserId(user_id);
 
         if (user == null) {
             String message = createGitRepository(user_id);
@@ -247,11 +249,11 @@ public class AuthorizationController {
         } else {
             String pathName = String.format("/tmp/%s.git/.git", user_id);
 
-            Repository existingRepo = new FileRepositoryBuilder()
-                    .setGitDir(new File(pathName))
-                    .build();
+            Git git = null;
+            try {
+                git = Git.open(new File(String.format("%s/%s.git/.git", git_path, user_id)));
 
-            if (existingRepo == null) {
+            }catch (RepositoryNotFoundException e) {
                 String message = createGitRepository(user_id);
 
                 System.out.println(message);
@@ -309,6 +311,8 @@ public class AuthorizationController {
             return "登陆失败";
         }
     }
+
+
     private String createGitRepository(String user_id) throws IOException {
 
         String pathName = String.format("%s/%s.git/.git", git_path, user_id);
@@ -330,7 +334,5 @@ public class AuthorizationController {
         }
 
     }
-
-
 
 }

@@ -5,15 +5,58 @@
 <mapper namespace="com.example.geeweshowapi.dao.Enity">
     <!--    select    -->
     <select id="findByUserId" resultType="com.example.geeweshowapi.model.User">
-        select user_id,git_id from user where user_id = #{user_id};
+        select * from user where user_id = #{user_id};
+    </select>
+
+    <select id="findByArticleTitle" resultType = "com.example.geeweshowapi.model.Article">
+        select * from article where article_title = #{article_title};
+    </select>
+
+    <select id="findArticleByUserId" resultType="com.example.geeweshowapi.model.Article">
+        select * from article where user_id = #{user_id};
+    </select>
+
+    <select id="findArticleHistoryByArticleId" resultType="com.example.geeweshowapi.model.ArticleVersion">
+        select * from article_version where article_id = #{article_id};
+    </select>
+
+    <select id="findArticleByUserIdAndTitle" resultType="com.example.geeweshowapi.model.Article">
+        select * from article where user_id = #{user_id} and article_title = #{article_title};
     </select>
 
     <insert id="insertUserInfo">
-        insert into user (user_id,git_id) values(#{user_id},#{git_id});
+        insert into user (user_id,repository_path) values(#{user_id},#{repository_path});
     </insert>
 
     <update id="updateUserInfo">
         UPDATE user SET git_id=#{git_id} where user_id = #{user_id};
     </update>
 
+    <insert id="insertArticle">
+        insert into article (user_id,repository_path,article_title,create_timestamp) values(#{user_id},#{repository_path},#{article_title},#{timestamp});
+    </insert>
+
+    <insert id="addArticleVersion">
+        insert into article_version (article_id,commit_message,version_id,update_timestamp) values(#{article_id},#{commit_message},#{commit_id},#{timestamp});
+    </insert>
+
+    <insert id="addUser">
+        insert into user (user_id,repository_path) values(#{user_id},#{repository_path});
+    </insert>
+
+    <delete id="deleteArticle" >
+        delete from article where id = #{article_id};
+    </delete>
+
+
+
+
+
+    <delete id="deleteArticleVersion">
+        delete from article_version where article_id = #{article_id};
+    </delete>
+
+    <delete id="deleteUser">
+        delete from user where user_id = #{user_id};
+    </delete>
 </mapper>
