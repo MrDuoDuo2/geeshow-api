@@ -9,11 +9,15 @@ import org.eclipse.jgit.api.RevertCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectLoader;
+import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
+import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.treewalk.TreeWalk;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.web.bind.annotation.*;
@@ -23,11 +27,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Timestamp;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.eclipse.jgit.util.FileUtils.mkdir;
 
@@ -75,7 +77,6 @@ public class ArticleController {
                 file.mkdir();
             }
 
-            mysqlController.addUser(user_id,user_repository_path);
         } catch (NullPointerException e){
             File file = new File(String.format("%s/%s", git_path, user_id));
             if (!file.exists()){
@@ -338,7 +339,7 @@ public class ArticleController {
 
         String articlesString = "";
         for (Article article:articles) {
-            articlesString += article.getArticleTitle()+",";
+            articlesString += article.getArticleTitle()+"\n";
         }
 
         return articlesString;
@@ -352,22 +353,41 @@ public class ArticleController {
         MysqlController mysqlController = new MysqlController();
         mysqlController.init();
 
-        List<Article> articles = mysqlController.findArticleByUserId(user_id);
+
+        Article article;
+        Git article_git;
+        try {
+            article = mysqlController.findArticleByUserIdAndTitle(user_id, title);
+            article_git = Git.open(new File(article.getRepositoryPath() + "/.git"));
+        }catch (NullPointerException e){
+            return "文章不存在";
+        }
 
 
         List<ArticleVersion> articleVersions = null;
-        for (Article article:articles) {
-            if (article.getArticleTitle().equals(title)){
-                articleVersions = mysqlController.findArticleHistoryByArticleId(article.getId());
-            }
-        }
+        articleVersions = mysqlController.findArticleHistoryByArticleId(article.getId());
 
         if (articleVersions==null) {
             return "文章不存在";
         }
+
+        Repository repository =null;
         String commit_ids = "";
         for (ArticleVersion articleVersion:articleVersions) {
-            commit_ids += articleVersion.getVersionId() + "\n";
+
+            repository = article_git.getRepository();
+            RevWalk walk = new RevWalk(repository);
+            ObjectId objId = repository.resolve(articleVersion.getVersionId());
+            RevCommit revCommit = walk.parseCommit(objId);
+            RevTree revTree = revCommit.getTree();
+
+            //child表示相对git库的文件路径
+            TreeWalk treeWalk = TreeWalk.forPath(repository, title+".asc", revTree);
+            ObjectId blobId = treeWalk.getObjectId(0);
+            ObjectLoader loader = repository.open(blobId);
+
+            commit_ids += articleVersion.getVersionId() + " " + articleVersion.getUpdateTimestamp() + new String(loader.getBytes())
+                    + "\n";
         }
 
         return commit_ids;
@@ -375,8 +395,8 @@ public class ArticleController {
 
 
 
-    @PostMapping(value = "/checkout")
-    public String checkout(@RequestParam Map<String,String> params) throws IOException, GitAPIException {
+    @PostMapping(value = "/revert")
+    public String revert(@RequestParam Map<String,String> params) throws IOException, GitAPIException {
         String user_id = params.get("UserId");
         String title = params.get("Title");
         String version = params.get("ArticleVersion");
@@ -398,20 +418,27 @@ public class ArticleController {
             }
         }
 
-        Git git = null;
+        Git article_git = null;
         try {
-            git = Git.open(new File(String.format("%s/.git", article.getRepositoryPath())));
+            article_git = Git.open(new File(String.format("%s/.git", article.getRepositoryPath())));
         } catch (RepositoryNotFoundException e) {
             return "仓库不存在";
         }
 
-        Repository repository = git.getRepository();
-        RevWalk revWalk = new RevWalk(repository);
-        ObjectId objectId = repository.resolve(version);
-        RevCommit revCommit = revWalk.parseCommit(objectId);
-        String preVision = revCommit.getParent(0).getName();
-        git.reset().setMode(ResetCommand.ResetType.HARD).setRef(preVision).call();
+        Repository repository = article_git.getRepository();
+
+//        RevWalk revWalk = new RevWalk(repository);
+        ObjectId head = repository.resolve(version);
+
+        RevertCommand revertCommand = article_git.revert();
+        revertCommand.include(head);
+        RevCommit revCommit = revertCommand.call();
         repository.close();
-        return user_id;
+
+        Date data = new Date();
+        Timestamp timestamp = new Timestamp(data.getTime());
+
+        mysqlController.addArticleVersion(article.getId(), String.format("revert%s", title), revCommit.getName(), timestamp);
+        return "回滚成功";
     }
 }
