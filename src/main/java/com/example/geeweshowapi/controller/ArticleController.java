@@ -44,6 +44,11 @@ public class ArticleController {
 
         String title = params.get("Title");
         String user_id = params.get("UserId");
+
+
+        if (title==null||user_id==null){
+            return "参数错误";
+        }
 //
 ////        连接redis
 //        Jedis jedis = new Jedis("192.168.2.39");
@@ -71,19 +76,19 @@ public class ArticleController {
 
         try {
             User user = mysqlController.findByUserId(user_id);
-            user_repository_path= user.getRepositoryPath();
+            user_repository_path = user.getRepositoryPath();
             File file = new File(user_repository_path);
-            if (!file.exists()){
+            if (!file.exists()) {
                 file.mkdir();
             }
 
-        } catch (NullPointerException e){
+        } catch (NullPointerException e) {
             File file = new File(String.format("%s/%s", git_path, user_id));
-            if (!file.exists()){
+            if (!file.exists()) {
                 file.mkdir();
             }
             user_repository_path = String.format("%s/%s", git_path, user_id);
-            mysqlController.addUser(user_id,user_repository_path);
+            mysqlController.addUser(user_id, user_repository_path);
         }
 
 
@@ -91,14 +96,14 @@ public class ArticleController {
         try {
             article_git = Git.open(new File(String.format("%s/%s.git/.git", user_repository_path, title)));
             return "文章仓库存在";
-        }catch (RepositoryNotFoundException e) {
+        } catch (RepositoryNotFoundException e) {
             Repository newlyCreatedRepo = FileRepositoryBuilder.create(
                     new File(String.format("%s/%s.git/.git", user_repository_path, title)));
             newlyCreatedRepo.create();
             article_git = new Git(newlyCreatedRepo);
         }
 
-        filePath = String.format("%s/%s.git/%s",user_repository_path,title,fileName);
+        filePath = String.format("%s/%s.git/%s", user_repository_path, title, fileName);
 
         //添加文件
         File file = new File(filePath);
@@ -134,17 +139,16 @@ public class ArticleController {
 
 
                 //获取当前时间
-                Date date = new Date();
-                java.sql.Timestamp timestamp = new Timestamp(date.getTime());
+                java.sql.Timestamp timestamp = new Timestamp(commit.getCommitTime());
 
-                Article articleTmp =mysqlController.findByArticleTitle(title);
-                if (articleTmp!=null){
+                Article articleTmp = mysqlController.findByArticleTitle(title);
+                if (articleTmp != null) {
                     mysqlController.deleteArticle(articleTmp.getId());
                 }
                 //文章信息入库
-                mysqlController.addArticle(user_id,String.format("%s/%s.git", user_repository_path, title), title, timestamp);
+                mysqlController.addArticle(user_id, String.format("%s/%s.git", user_repository_path, title), title, timestamp);
 
-                Article article =mysqlController.findByArticleTitle(title);
+                Article article = mysqlController.findByArticleTitle(title);
 //                文章版本信息入库
                 mysqlController.addArticleVersion(article.getId(), message, commit_id, timestamp);
 
@@ -168,6 +172,10 @@ public class ArticleController {
         String title = params.get("Title");
         String user_id = params.get("UserId");
 
+        if (title==null||user_id==null){
+            return "参数错误";
+        }
+
         //链接Mysql
         MysqlController mysqlController = new MysqlController();
         mysqlController.init();
@@ -179,15 +187,15 @@ public class ArticleController {
 
         try {
             User user = mysqlController.findByUserId(user_id);
-            user_repository_path= user.getRepositoryPath();
+            user_repository_path = user.getRepositoryPath();
             File file = new File(user_repository_path);
-            if (!file.exists()){
+            if (!file.exists()) {
                 file.mkdir();
             }
 
-        } catch (NullPointerException e){
+        } catch (NullPointerException e) {
             File file = new File(String.format("%s/%s", git_path, user_id));
-            if (!file.exists()){
+            if (!file.exists()) {
                 file.mkdir();
             }
             user_repository_path = String.format("%s/%s", git_path, user_id);
@@ -208,17 +216,17 @@ public class ArticleController {
         Git article_git = null;
         try {
             article_git = Git.open(new File(String.format("%s/%s.git/.git", user_repository_path, title)));
-        }catch (RepositoryNotFoundException e) {
+        } catch (RepositoryNotFoundException e) {
             return "文章仓库不存在";
         }
 
-        filePath = String.format("%s/%s.git",user_repository_path,title);
+        filePath = String.format("%s/%s.git", user_repository_path, title);
 
         File file = new File(filePath);
 
         if (FileSystemUtils.deleteRecursively(file)) {
             Article article = mysqlController.findByArticleTitle(title);
-            if (article == null){
+            if (article == null) {
                 return "文章不存在";
             }
             //删除文章信息
@@ -240,6 +248,11 @@ public class ArticleController {
         String user_id = params.get("UserId");
         String title = params.get("Title");
 
+
+        if (title==null||user_id==null){
+            return "参数错误";
+        }
+
         //链接Mysql
         MysqlController mysqlController = new MysqlController();
         mysqlController.init();
@@ -251,15 +264,15 @@ public class ArticleController {
 
         try {
             User user = mysqlController.findByUserId(user_id);
-            user_repository_path= user.getRepositoryPath();
+            user_repository_path = user.getRepositoryPath();
             File file = new File(user_repository_path);
-            if (!file.exists()){
+            if (!file.exists()) {
                 file.mkdir();
             }
 
-        } catch (NullPointerException e){
+        } catch (NullPointerException e) {
             File file = new File(String.format("%s/%s", git_path, user_id));
-            if (!file.exists()){
+            if (!file.exists()) {
                 file.mkdir();
             }
             user_repository_path = String.format("%s/%s", git_path, user_id);
@@ -280,11 +293,11 @@ public class ArticleController {
         Git article_git = null;
         try {
             article_git = Git.open(new File(String.format("%s/%s.git/.git", user_repository_path, title)));
-        }catch (RepositoryNotFoundException e) {
+        } catch (RepositoryNotFoundException e) {
             return "文章不存在";
         }
 
-        filePath = String.format("%s/%s.git/%s",user_repository_path,title,fileName);
+        filePath = String.format("%s/%s.git/%s", user_repository_path, title, fileName);
 
         File file = new File(filePath);
         //创建文件
@@ -308,10 +321,9 @@ public class ArticleController {
                 RevCommit commit = article_git.commit().setMessage("updateFile " + fileName).call();
 
 
-                Article article = mysqlController.findArticleByUserIdAndTitle(user_id,title);
+                Article article = mysqlController.findArticleByUserIdAndTitle(user_id, title);
 
-                Date date = new Date();
-                Timestamp timestamp = new Timestamp(date.getTime());
+                Timestamp timestamp = new Timestamp(commit.getCommitTime());
                 //文章版本信息入库
                 mysqlController.addArticleVersion(article.getId(), commit.getFullMessage(), commit.getName(), timestamp);
                 return "更新成功";
@@ -329,7 +341,7 @@ public class ArticleController {
     }
 
     @GetMapping(value = "/articles")
-    public String articles(@RequestParam Map<String,String> params) throws IOException {
+    public String articles(@RequestParam Map<String, String> params) throws IOException {
         String user_id = params.get("UserId");
 
         MysqlController mysqlController = new MysqlController();
@@ -338,17 +350,17 @@ public class ArticleController {
         List<Article> articles = mysqlController.findArticleByUserId(user_id);
 
         String articlesString = "";
-        for (Article article:articles) {
-            articlesString += article.getArticleTitle()+"\n";
+        for (Article article : articles) {
+            articlesString += article.getArticleTitle() + "\n";
         }
 
         return articlesString;
     }
 
     @GetMapping(value = "/history")
-    public String articlesHistory(@RequestParam Map<String,String> params) throws IOException {
+    public String articlesHistory(@RequestParam Map<String, String> params) throws IOException {
         String user_id = params.get("UserId");
-        String title=params.get("Title");
+        String title = params.get("Title");
 
         MysqlController mysqlController = new MysqlController();
         mysqlController.init();
@@ -359,7 +371,7 @@ public class ArticleController {
         try {
             article = mysqlController.findArticleByUserIdAndTitle(user_id, title);
             article_git = Git.open(new File(article.getRepositoryPath() + "/.git"));
-        }catch (NullPointerException e){
+        } catch (NullPointerException e) {
             return "文章不存在";
         }
 
@@ -367,13 +379,13 @@ public class ArticleController {
         List<ArticleVersion> articleVersions = null;
         articleVersions = mysqlController.findArticleHistoryByArticleId(article.getId());
 
-        if (articleVersions==null) {
+        if (articleVersions == null) {
             return "文章不存在";
         }
 
-        Repository repository =null;
+        Repository repository = null;
         String commit_ids = "";
-        for (ArticleVersion articleVersion:articleVersions) {
+        for (ArticleVersion articleVersion : articleVersions) {
 
             repository = article_git.getRepository();
             RevWalk walk = new RevWalk(repository);
@@ -382,7 +394,7 @@ public class ArticleController {
             RevTree revTree = revCommit.getTree();
 
             //child表示相对git库的文件路径
-            TreeWalk treeWalk = TreeWalk.forPath(repository, title+".asc", revTree);
+            TreeWalk treeWalk = TreeWalk.forPath(repository, title + ".asc", revTree);
             ObjectId blobId = treeWalk.getObjectId(0);
             ObjectLoader loader = repository.open(blobId);
 
@@ -394,12 +406,15 @@ public class ArticleController {
     }
 
 
-
     @PostMapping(value = "/revert")
-    public String revert(@RequestParam Map<String,String> params) throws IOException, GitAPIException {
+    public String revert(@RequestParam Map<String, String> params) throws IOException, GitAPIException {
         String user_id = params.get("UserId");
         String title = params.get("Title");
         String version = params.get("ArticleVersion");
+
+        if (user_id==null||title==null||version==null){
+            return "参数错误";
+        }
 
         MysqlController mysqlController = new MysqlController();
         mysqlController.init();
@@ -408,12 +423,12 @@ public class ArticleController {
         User user = mysqlController.findByUserId(user_id);
 
         Article article;
-        if (user == null){
+        if (user == null) {
             return "用户不存在";
-        }else {
-            article= mysqlController.findArticleByUserIdAndTitle(user_id,title);
+        } else {
+            article = mysqlController.findArticleByUserIdAndTitle(user_id, title);
 
-            if (article == null){
+            if (article == null) {
                 return "文章不存在";
             }
         }
@@ -427,18 +442,54 @@ public class ArticleController {
 
         Repository repository = article_git.getRepository();
 
-//        RevWalk revWalk = new RevWalk(repository);
+        RevWalk revWalk = new RevWalk(repository);
         ObjectId head = repository.resolve(version);
 
-        RevertCommand revertCommand = article_git.revert();
-        revertCommand.include(head);
-        RevCommit revCommit = revertCommand.call();
-        repository.close();
+        RevCommit commit = revWalk.parseCommit(head);
 
-        Date data = new Date();
-        Timestamp timestamp = new Timestamp(data.getTime());
+        RevTree revTree = commit.getTree();
 
-        mysqlController.addArticleVersion(article.getId(), String.format("revert%s", title), revCommit.getName(), timestamp);
-        return "回滚成功";
+        //child表示相对git库的文件路径
+        TreeWalk treeWalk = TreeWalk.forPath(repository, title + ".asc", revTree);
+        ObjectId blobId = treeWalk.getObjectId(0);
+        ObjectLoader loader = repository.open(blobId);
+
+        String filePath = String.format("%s/%s.asc", article.getRepositoryPath(), title);
+
+        File file = new File(filePath);
+        //创建文件
+        try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+
+            if (!file.exists()) {
+                return "文件不存在";
+            } else {
+
+                // get the content in bytes
+                byte[] contentInBytes = loader.getBytes();
+
+//                fileOutputStream.write(null);
+                fileOutputStream.write(contentInBytes);
+                fileOutputStream.flush();
+                fileOutputStream.close();
+
+                System.out.println("Done");
+                //获取仓库
+                article_git.add().addFilepattern(title + ".asc").call();
+                RevCommit revCommit = article_git.commit().setMessage("updateFile " + title + ".asc").call();
+
+
+                Article articleResult = mysqlController.findArticleByUserIdAndTitle(user_id, title);
+
+                Date date = new Date();
+                Timestamp timestamp = new Timestamp(date.getTime());
+                //文章版本信息入库
+                mysqlController.addArticleVersion(articleResult.getId(), revCommit.getFullMessage(), revCommit.getName(), timestamp);
+                return "更新成功";
+
+//        Timestamp timestamp = new Timestamp(revCommit.getCommitTime());
+//
+//        mysqlController.addArticleVersion(article.getId(), String.format("revert%s", title), revCommit.getName(), timestamp);
+            }
+        }
     }
 }
