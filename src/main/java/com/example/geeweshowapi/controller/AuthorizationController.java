@@ -4,6 +4,7 @@ package com.example.geeweshowapi.controller;
 import com.example.geeweshowapi.DTO.AccessTokenDTO;
 import com.example.geeweshowapi.DTO.GithubUserDTO;
 import com.example.geeweshowapi.Provider.GithubProvider;
+import com.example.geeweshowapi.Provider.RepositoryProvider;
 import com.example.geeweshowapi.Provider.SignatrueProvider;
 import com.example.geeweshowapi.model.User;
 import com.example.geeweshowapi.util.JsonUtils;
@@ -25,6 +26,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.SocketTimeoutException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
@@ -39,17 +41,26 @@ public class AuthorizationController {
     @Autowired
     public GithubProvider githubProvider;
 
+    @Autowired
+    public RepositoryProvider repositoryProvider;
+
     @Value("${github.client.id}")
     private String clientId;
 
     @Value("${github.client.secret}")
     private String clientSecret;
 
-    @Value("${github.redirect_uri}")
-    private String redirect_uri;
-
     @Value("${git.path}")
     private String git_path;
+
+    @Value("${server.ip}")
+    private String server_ip;
+
+    @Value("${server.port}")
+    private String server_port;
+
+    @Value("${redis.ip}")
+    private String redis_ip;
 
     @GetMapping(value = "/")
     public void index(HttpServletRequest request, HttpServletResponse response) throws IOException, NoSuchAlgorithmException, InvalidKeyException {
@@ -71,22 +82,13 @@ public class AuthorizationController {
         }
 
         if (user_id == null && token == null) {
-            Cookie userIdCookie = new Cookie("UserId", "");
-            Cookie tokenCookie = new Cookie("Token", "");
-
-            response.addCookie(userIdCookie);
-            response.addCookie(tokenCookie);
-        }else if (user_id.equals("") && token.equals("")){
-            Cookie userIdCookie = new Cookie("UserId", "");
-            Cookie tokenCookie = new Cookie("Token", "");
-
-            response.addCookie(userIdCookie);
-            response.addCookie(tokenCookie);
+            user_id = "";
+            token = "";
         }
 
         if (Objects.equals(user_id, "") || Objects.equals(token, "")) {
             //发送登陆请求
-            response.sendRedirect("https://github.com/login/oauth/authorize?client_id=611f387c5bf0d1959f3f&state=1");
+            response.sendRedirect(String.format("https://github.com/login/oauth/authorize?client_id=611f387c5bf0d1959f3f&state=1"));
         } else {
 
             String SignatureMethod = "HmacSHA1";
@@ -132,7 +134,7 @@ public class AuthorizationController {
                 i++;
             }
 
-            String url = String.format("http://192.168.2.43:8080/check?%s", paramsString.toString());
+            String url = String.format("http://%s:%s/check?%s", server_ip, server_port, paramsString.toString());
 
             response.sendRedirect(url);
         }
@@ -152,11 +154,8 @@ public class AuthorizationController {
         String token = jedis.get(params.get("UserId"));
 
         if (token == null) {
-            Cookie UserIdCookie = new Cookie("UserId", null);
-            Cookie TokenCookie = new Cookie("Token", null);
 
-            response.addCookie(UserIdCookie);
-            response.addCookie(TokenCookie);
+            set_cookie(response,null,null);
             return "登陆失败";
         }
 
@@ -168,30 +167,20 @@ public class AuthorizationController {
             try {
                 githubUser = githubProvider.getUserInfo(token);
             } catch (NullPointerException e) {
-                Cookie UserIdCookie = new Cookie("UserId", null);
-                Cookie TokenCookie = new Cookie("Token", null);
-
-                response.addCookie(UserIdCookie);
-                response.addCookie(TokenCookie);
+                set_cookie(response,null,null);
                 return "登陆失败";
             }
 
             if (githubUser != null) {
                 return "登陆成功";
             } else {
-                Cookie UserIdCookie = new Cookie("UserId", null);
-                Cookie TokenCookie = new Cookie("Token", null);
-
-                response.addCookie(UserIdCookie);
-                response.addCookie(TokenCookie);
+                set_cookie(response,null,null);
                 return "登陆失败";
             }
         } else {
-            Cookie UserIdCookie = new Cookie("UserId", null);
-            Cookie TokenCookie = new Cookie("Token", null);
 
-            response.addCookie(UserIdCookie);
-            response.addCookie(TokenCookie);
+            set_cookie(response,null,null);
+
             return "登陆鉴权失败";
         }
 
@@ -200,7 +189,7 @@ public class AuthorizationController {
     @GetMapping(value = "/callback")
     public String callback(@RequestParam(name = "code") String code,
                            @RequestParam(name = "state") String state,
-                           HttpServletResponse httpServletResponse) throws IOException {
+                           HttpServletResponse httpServletResponse) throws IOException, SocketTimeoutException {
 
         AccessTokenDTO accessTokenDTO = new AccessTokenDTO();
         accessTokenDTO.setClient_id(clientId);
@@ -208,12 +197,16 @@ public class AuthorizationController {
 
         accessTokenDTO.setCode(code);
         accessTokenDTO.setState(state);
-        accessTokenDTO.setRedirect_uri(redirect_uri);
 
         String body = JsonUtils.toJson(accessTokenDTO);
 
         //获取用户token
         String token = githubProvider.getGithubToken(body);
+
+        if (token == null) {
+            return "登陆失败";
+        }
+
         GithubUserDTO githubUser;
 
         try {
@@ -225,91 +218,68 @@ public class AuthorizationController {
         //获取用户id
         String user_id = githubUser.getId();
 
+
+        //redis校验
+        if (user_id != null) {
+
+            //连接redis
+            Jedis jedis = new Jedis(redis_ip);
+
+            String redis_token = jedis.get(user_id);
+
+            if (redis_token == null) {
+                jedis.setex(user_id, 60, token);
+                set_cookie(httpServletResponse, user_id, token);
+            } else if (redis_token.equals(token)) {
+
+                set_cookie(httpServletResponse, null, null);
+
+                return "token重复重新登陆";
+            } else {
+                jedis.setex(user_id, 60, token);
+
+                set_cookie(httpServletResponse, user_id, token);
+            }
+        } else {
+            return "登陆失败";
+        }
+
+
         MysqlController mysqlController = new MysqlController();
         mysqlController.init();
 
         //查找mysql用户信息
         User user = mysqlController.findByUserId(user_id);
 
-        if (user == null) {
-            String message = createGitRepository(user_id);
+        if (user == null||user.getRepositoryPath()==null) {
+            String message = repositoryProvider.addUserRepository(user_id);
 
             System.out.println(message);
 
-            if (message == "创建失败") {
-                Cookie UserIdCookie = new Cookie("UserId", null);
-                Cookie TokenCookie = new Cookie("Token", null);
+            mysqlController.insertUserInfo(user_id, message);
 
-                httpServletResponse.addCookie(UserIdCookie);
-                httpServletResponse.addCookie(TokenCookie);
-                return "登陆失败";
-            } else {
-                mysqlController.insertUserInfo(user_id, message);
-            }
+            return "登陆成功";
         } else {
-            String pathName = String.format("/tmp/%s.git/.git", user_id);
+            File file = new File(user.getRepositoryPath());
 
-            Git git = null;
-            try {
-                git = Git.open(new File(String.format("%s/%s.git/.git", git_path, user_id)));
-
-            }catch (RepositoryNotFoundException e) {
-                String message = createGitRepository(user_id);
-
-                System.out.println(message);
-
-                if (message == "创建失败") {
-                    Cookie UserIdCookie = new Cookie("UserId", null);
-                    Cookie TokenCookie = new Cookie("Token", null);
-
-                    httpServletResponse.addCookie(UserIdCookie);
-                    httpServletResponse.addCookie(TokenCookie);
-                    return "登陆失败";
-                } else {
-                    mysqlController.updateUserInfo(user_id, message);
-                }
+            if (!file.exists()) {
+                file.mkdir();
+                mysqlController.deleteUser(user_id);
+                mysqlController.insertUserInfo(user_id, user.getRepositoryPath());
             }
+
+            return "登陆成功";
         }
+    }
 
-        //redis校验
-        if (user_id != null) {
+    private void set_cookie(HttpServletResponse httpServletResponse, String user_id, String token) {
 
-            //连接redis
-            Jedis jedis = new Jedis("192.168.2.39");
+        Cookie userIdCookie = new Cookie("UserId", user_id);
+        Cookie tokenCookie = new Cookie("Token", token);
 
-            String redis_token = jedis.get(user_id);
+        httpServletResponse.addCookie(userIdCookie);
+        httpServletResponse.addCookie(tokenCookie);
 
-            if (redis_token == null) {
-                jedis.setex(user_id, 60, token);
-
-                Cookie userIdCookie = new Cookie("UserId", user_id);
-                Cookie tokenCookie = new Cookie("Token", token);
-
-                httpServletResponse.addCookie(userIdCookie);
-                httpServletResponse.addCookie(tokenCookie);
-
-                return "登陆成功";
-            } else if (redis_token.equals(token)) {
-                Cookie UserIdCookie = new Cookie("UserId", null);
-                Cookie TokenCookie = new Cookie("Token", null);
-
-                httpServletResponse.addCookie(UserIdCookie);
-                httpServletResponse.addCookie(TokenCookie);
-                return "token重复重新登陆";
-            } else {
-                jedis.setex(user_id, 60, token);
-
-                Cookie userIdCookie = new Cookie("UserId", user_id);
-                Cookie tokenCookie = new Cookie("Token", token);
-
-                httpServletResponse.addCookie(userIdCookie);
-                httpServletResponse.addCookie(tokenCookie);
-
-                return "登陆成功";
-            }
-        } else {
-            return "登陆失败";
-        }
     }
 
 

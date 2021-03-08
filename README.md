@@ -1,5 +1,20 @@
 # geeweshow-api
 
+## 启动设置
+````
+github.client.id 为github生成的client_id
+github.client.secret 为github生成client_secre
+
+server.ip 服务器ip
+server.port 服务器端口
+
+redis.ip redis_ip
+
+git.path git仓库
+
+````
+TIP: client_id和client_secret需要github OAuth设置
+
 ## 使用限制
     在您使用之前，您需要准备一个Token(登陆时，由GITHUB提供)，在访问每一个接口的时候，您需要传入您的UserID，和由Token加密生成的签名，获取签名方法请查看鉴权规则。
 
@@ -161,4 +176,112 @@ Get
 | SignatureMethod | 签名方式。取值范围：HMAC-SHA1。 | HmacSHA1 |
 | Timestamp | 时间戳 | 2021-03-02%2017%3A51%3A43.61 |
 
+## 文章操作api
+### add
+添加文章api
 
+### URL
+### Url
+http://192.168.2.43:8080/add?Title=test_asc&UserId=45281356
+
+#### 请求方式
+POST
+
+#### 参数
+| 参数  | 名称 | 示例值 |
+| :-----| ----: | :----: |
+| Title | 标题 | test_asc |
+| UserId| 用户ID | 45281356 |
+
+#### 请求BODY
+文章内容
+
+### update
+修改文章api
+
+### URL
+### Url
+http://192.168.2.43:8080/update?Title=test_asc&UserId=45281356
+
+#### 请求方式
+POST
+
+#### 参数
+| 参数  | 名称 | 示例值 |
+| :-----| ----: | :----: |
+| Title | 标题 | test_asc |
+| UserId| 用户ID | 45281356 |
+
+
+#### 请求BODY
+文章内容
+
+
+### delete
+删除文章api
+
+### URL
+### Url
+http://192.168.2.43:8080/delete?Title=test_asc&UserId=45281356
+
+#### 请求方式
+Get
+
+#### 参数
+| 参数  | 名称 | 示例值 |
+| :-----| ----: | :----: |
+| Title | 标题 | test_asc |
+| UserId| 用户ID | 45281356 |
+
+
+### articles
+显示用户文章列表api
+
+### URL
+### Url
+http://192.168.2.43:8080/article?Title=test_asc&UserId=45281356
+
+#### 请求方式
+Get
+
+#### 参数
+| 参数  | 名称 | 示例值 |
+| :-----| ----: | :----: |
+| Title | 标题 | test_asc |
+| UserId| 用户ID | 45281356 |
+
+
+### history
+显示文章版本列表api
+
+### URL
+### Url
+http://192.168.2.43:8080/history?Title=test_asc&UserId=45281356
+
+#### 请求方式
+Get
+
+#### 参数
+| 参数  | 名称 | 示例值 |
+| :-----| ----: | :----: |
+| Title | 标题 | test_asc |
+| UserId| 用户ID | 45281356 |
+
+
+
+### revert
+文章回档api
+
+### URL
+### Url
+http://192.168.2.43:8080/revert?UserId=4721321321&Title=test_asc&ArticleVersion=7e3209d35adbd731e59dbcad53f84f8b43b44528
+
+#### 请求方式
+POST
+
+#### 参数
+| 参数  | 名称 | 示例值 |
+| :-----| ----: | :----: |
+| Title | 标题 | test_asc |
+| UserId| 用户ID | 45281356 |
+| ArticleVersion| 文章版本||
