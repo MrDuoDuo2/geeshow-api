@@ -36,6 +36,9 @@ import static org.eclipse.jgit.util.FileUtils.mkdir;
 @RestController
 public class ArticleController {
 
+    @Value("${redis.ip}")
+    private String redis_ip;
+
     @Value("${git.path}")
     private String git_path;
 
@@ -51,7 +54,7 @@ public class ArticleController {
         }
 //
 ////        连接redis
-//        Jedis jedis = new Jedis("192.168.2.39");
+//        Jedis jedis = new Jedis(redis_ip);
 //        String redis_token = jedis.get(user_id);
 
 
@@ -202,7 +205,7 @@ public class ArticleController {
         }
 
 //        //连接redis
-//        Jedis jedis = new Jedis("192.168.2.39");
+//        Jedis jedis = new Jedis(redis_ip);
 //        String redis_token = jedis.get(user_id);
 
 //        //生成签名
@@ -280,7 +283,7 @@ public class ArticleController {
 
 
         //连接redis
-//        Jedis jedis = new Jedis("192.168.2.39");
+//        Jedis jedis = new Jedis(redis_ip);
 //        String redis_token = jedis.get(user_id);
 
         //生成签名
