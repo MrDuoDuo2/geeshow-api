@@ -4,16 +4,12 @@ import com.example.geeweshowapi.model.Article;
 import com.example.geeweshowapi.model.ArticleVersion;
 import com.example.geeweshowapi.model.User;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.ResetCommand;
-import org.eclipse.jgit.api.RevertCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
-import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
@@ -22,12 +18,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Timestamp;
 import java.util.*;
 
@@ -341,6 +334,39 @@ public class ArticleController {
 //            return "鉴权失败";
 //        }
         return "";
+    }
+
+    @GetMapping(value = "getArticle")
+    public String getAritcle(@RequestParam Map<String,String> params) throws IOException {
+        String user_id = params.get("UserId");
+        String title= params.get("Title");
+
+        MysqlController mysqlController = new MysqlController();
+        mysqlController.init();
+        Article article;
+        String path;
+        try {
+            article = mysqlController.findArticleByUserIdAndTitle(user_id, title);
+            path = article.getRepositoryPath() + "/" + title + ".asc";
+        }catch (NullPointerException e ){
+            return "文章不存在";
+        }
+        try {
+            FileInputStream in = new FileInputStream(path);
+
+            String str = "";
+            Scanner sc = new Scanner(in, "GBK");
+            while (sc.hasNextLine())
+            {
+                String line = sc.nextLine();
+                str += line;
+                System.out.println(line);
+            }
+            sc.close();
+            return str;
+        }catch (IOException e){
+            return "文件读取失败";
+        }
     }
 
     @GetMapping(value = "/articles")

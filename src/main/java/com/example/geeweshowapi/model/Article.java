@@ -1,5 +1,7 @@
 package com.example.geeweshowapi.model;
 
+import java.io.File;
+
 public class Article {
     Integer id;
     String userId;
