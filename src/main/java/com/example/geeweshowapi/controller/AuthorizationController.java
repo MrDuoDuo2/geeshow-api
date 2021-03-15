@@ -147,6 +147,8 @@ public class AuthorizationController {
 
             String url = String.format("http://%s:%s/check?%s", server_ip, server_port, paramsString.toString());
 
+            System.out.println(url);
+
             response.sendRedirect(url);
         }
     }

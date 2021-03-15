@@ -3,12 +3,11 @@ package com.example.geeweshowapi.controller;
 import com.example.geeweshowapi.model.Article;
 import com.example.geeweshowapi.model.ArticleVersion;
 import com.example.geeweshowapi.model.User;
+import com.example.geeweshowapi.util.JsonUtils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.ObjectLoader;
-import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -19,6 +18,7 @@ import org.springframework.util.FileSystemUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
@@ -26,6 +26,8 @@ import java.util.*;
 
 import static org.eclipse.jgit.util.FileUtils.mkdir;
 
+
+@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 public class ArticleController {
 
@@ -336,34 +338,42 @@ public class ArticleController {
         return "";
     }
 
-    @GetMapping(value = "getArticle")
+    @GetMapping(value = "/getArticle")
     public String getAritcle(@RequestParam Map<String,String> params) throws IOException {
         String user_id = params.get("UserId");
         String title= params.get("Title");
+        String revision = params.get("Version");
 
         MysqlController mysqlController = new MysqlController();
         mysqlController.init();
+
         Article article;
         String path;
+        String gitDir;
+
         try {
             article = mysqlController.findArticleByUserIdAndTitle(user_id, title);
+            gitDir = article.getRepositoryPath()+"/.git";
             path = article.getRepositoryPath() + "/" + title + ".asc";
         }catch (NullPointerException e ){
             return "文章不存在";
         }
-        try {
-            FileInputStream in = new FileInputStream(path);
 
-            String str = "";
-            Scanner sc = new Scanner(in, "GBK");
-            while (sc.hasNextLine())
-            {
-                String line = sc.nextLine();
-                str += line;
-                System.out.println(line);
-            }
-            sc.close();
-            return str;
+        try {
+            Git git = Git.open(new File(gitDir));
+            Repository repository = git.getRepository();
+            RevWalk walk = new RevWalk(repository);
+            ObjectId objId = repository.resolve(revision);
+            RevCommit revCommit = walk.parseCommit(objId);
+            RevTree revTree = revCommit.getTree();
+
+            //child表示相对git库的文件路径
+            TreeWalk treeWalk = TreeWalk.forPath(repository, title+".asc", revTree);
+            ObjectId blobId = treeWalk.getObjectId(0);
+            ObjectLoader loader = repository.open(blobId);
+            String result = new String(loader.getBytes());
+            System.out.println(new String(loader.getBytes()));
+            return result;
         }catch (IOException e){
             return "文件读取失败";
         }
@@ -376,14 +386,40 @@ public class ArticleController {
         MysqlController mysqlController = new MysqlController();
         mysqlController.init();
 
+
+
         List<Article> articles = mysqlController.findArticleByUserId(user_id);
 
-        String articlesString = "";
+        ArrayList<HashMap<String, Object>> articlesList = new ArrayList<>();
         for (Article article : articles) {
-            articlesString += article.getArticleTitle() + "\n";
-        }
+            HashMap<String,Object> result = new HashMap<>();
+            Git article_git;
+            try {
+                article_git = Git.open(new File(article.getRepositoryPath() + "/.git"));
+                Repository repository = article_git.getRepository();
+                RefDatabase t = repository.getRefDatabase();
+                Ref s = t.findRef("master");
 
-        return articlesString;
+                RevWalk walk = new RevWalk(repository);
+
+                RevCommit revCommit = walk.parseCommit(s.getObjectId());
+
+                result.put("title",article.getArticleTitle());
+                System.out.println(article.getArticleTitle());
+
+                result.put("Version",revCommit.getName());
+                System.out.println(revCommit.getName());
+
+                articlesList.add(result);
+            } catch (NullPointerException e) {
+                return "文章不存在";
+            }
+        }
+        HashMap<String,Object> resultMap = new HashMap<>();
+        resultMap.put("Articles",articlesList);
+        String resultJson = JsonUtils.toJson(resultMap);
+
+        return resultJson;
     }
 
     @GetMapping(value = "/history")
@@ -410,28 +446,25 @@ public class ArticleController {
 
         if (articleVersions == null) {
             return "文章不存在";
+
         }
 
-        Repository repository = null;
         String commit_ids = "";
+
+
+        ArrayList<HashMap<String,Object>> historyList = new ArrayList<>();
         for (ArticleVersion articleVersion : articleVersions) {
-
-            repository = article_git.getRepository();
-            RevWalk walk = new RevWalk(repository);
-            ObjectId objId = repository.resolve(articleVersion.getVersionId());
-            RevCommit revCommit = walk.parseCommit(objId);
-            RevTree revTree = revCommit.getTree();
-
-            //child表示相对git库的文件路径
-            TreeWalk treeWalk = TreeWalk.forPath(repository, title + ".asc", revTree);
-            ObjectId blobId = treeWalk.getObjectId(0);
-            ObjectLoader loader = repository.open(blobId);
-
-            commit_ids += articleVersion.getVersionId() + " " + articleVersion.getUpdateTimestamp() + new String(loader.getBytes())
-                    + "\n";
+            HashMap<String,Object> articleMap = new HashMap<>();
+            articleMap.put("Version",articleVersion.getVersionId());
+            articleMap.put("Timestamp",articleVersion.getUpdateTimestamp());
+            historyList.add(articleMap);
         }
 
-        return commit_ids;
+        HashMap<String,ArrayList> hashMap = new HashMap<>();
+        hashMap.put("History",historyList);
+
+
+        return JsonUtils.toJson(hashMap);
     }
 
 
